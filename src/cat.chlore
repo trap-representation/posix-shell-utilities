@@ -123,7 +123,7 @@ set MAX_PATHSIZE 4097
     :read_args
       pushi 1
 
-      pushp getargc call over pushp read_args_loop_end jeq
+      pushp getargc call over pushp read_args_end jeq
       over over pushui MAX_PATHSIZE pushp getargv call
       over pushp "-u" pushp strcmp call pushi 0 pushp read_next_arg_maybe_optend jeq
       over pushp "--" pushp strcmp call pushi 0 pushp read_next_arg_buf jeq
@@ -145,11 +145,8 @@ set MAX_PATHSIZE 4097
         :read_stdin_nobuf_and_quit
           pushi STDIN
           pushp chon_input_nobuf call
-          pushi 1 pushp chon_quit_err_nobuf jeq
-          pop
-          pushp flush call
-          pushp mem_close call
-          hlt
+          pushi 1 pushp chon_quit_err jeq
+          pushp read_args_end jmp
 
         :duplicate_option
           pushp "chon: (warning) duplicate option `-u'\n" pushp putstre call
@@ -169,7 +166,7 @@ set MAX_PATHSIZE 4097
         pushi 1 hltr
 
       :read_args_loop_nobuf
-        pushp getargc call over pushp read_args_loop_end jeq
+        pushp getargc call over pushp read_args_end jeq
         over over pushui MAX_PATHSIZE pushp getargv call
 
         over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
@@ -183,41 +180,27 @@ set MAX_PATHSIZE 4097
           over
           pushi O_RDONLY
           pushp openf call
-          dup pushi -1 pushp open_failure_nobuf jeq
+          dup pushi -1 pushp open_failure jeq
           dup
           pushp chon_file_nobuf jmp
-
-          :open_failure_nobuf
-            pop pop
-            dup
-            pushp "chon: failed to open `%t' for reading\n" pushp putfmte call
-            pushp flush call
-            pushp mem_close call
-            pushi 1 hltr
 
         :chon_file_nobuf
           pushp chon_input_nobuf call
           swap dup pushi STDIN pushp close_file_nobuf jne
           pop
-          pushi 1 pushp chon_quit_err_nobuf jeq
+          pushi 1 pushp chon_quit_err jeq
           pushp read_next_arg_nobuf jmp
 
           :close_file_nobuf
             pushp closef call
-            pushi 1 pushp chon_quit_err_nobuf jeq
+            pushi 1 pushp chon_quit_err jeq
             pushp read_next_arg_nobuf jmp
-
-          :chon_quit_err_nobuf
-            pop
-            pushp flush call
-            pushp mem_close call
-            pushi 1 hltr
 
         :read_next_arg_nobuf
           pushi 1 addi pushp read_args_loop_nobuf jmp
 
       :read_args_loop_buf
-        pushp getargc call over pushp read_args_loop_end jeq
+        pushp getargc call over pushp read_args_end jeq
         over over pushui MAX_PATHSIZE pushp getargv call
 
         over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_buf jeq
@@ -231,40 +214,40 @@ set MAX_PATHSIZE 4097
           over
           pushi O_RDONLY
           pushp openf call
-          dup pushi -1 pushp open_failure_buf jeq
+          dup pushi -1 pushp open_failure jeq
           dup
           pushp chon_file_buf jmp
-
-          :open_failure_buf
-            pop pop
-            dup
-            pushp "chon: failed to open `%t' for reading\n" pushp putfmte call
-            pushp flush call
-            pushp mem_close call
-            pushi 1 hltr
 
         :chon_file_buf
           pushp chon_input_buf call
           swap dup pushi STDIN pushp close_file_buf jne
           pop
-          pushi 1 pushp chon_quit_err_buf jeq
+          pushi 1 pushp chon_quit_err jeq
           pushp read_next_arg_buf jmp
 
           :close_file_buf
             pushp closef call
-            pushi 1 pushp chon_quit_err_buf jeq
+            pushi 1 pushp chon_quit_err jeq
             pushp read_next_arg_buf jmp
-
-          :chon_quit_err_buf
-            pop
-            pushp flush call
-            pushp mem_close call
-            pushi 1 hltr
 
         :read_next_arg_buf
           pushi 1 addi pushp read_args_loop_buf jmp
 
-      :read_args_loop_end
+      :open_failure
+        pop pop
+        dup
+        pushp "chon: failed to open `%t' for reading\n" pushp putfmte call
+        pushp flush call
+        pushp mem_close call
+        pushi 1 hltr
+
+      :chon_quit_err
+        pop
+        pushp flush call
+        pushp mem_close call
+        pushi 1 hltr
+
+      :read_args_end
         pop
         pushp flush call
         pushp mem_close call
