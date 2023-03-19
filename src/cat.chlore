@@ -1,0 +1,231 @@
+;    POSIX compliant (POSIX.1-2017) implementation of the cat utility
+;    Copyright (C) 2023  Somdipto Chakraborty
+;
+;    This program is free software: you can redistribute it and/or modify
+;    it under the terms of the GNU General Public License as published by
+;    the Free Software Foundation, either version 3 of the License, or
+;    (at your option) any later version.
+;
+;    This program is distributed in the hope that it will be useful,
+;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;    GNU General Public License for more details.
+;
+;    You should have received a copy of the GNU General Public License
+;    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import "stdlib.chlore"
+import "io.chlore"
+import "alloc2.chlore"
+;import "/usr/local/include/memchk.chlore" ;uncomment this line and comment out the previous line to use the allocator provided by the `memchk' library (instead of the one that's provided by the standard library) for detecting memory leaks
+import "stddef.chlore"
+import "string.chlore"
+
+:stdout_write_failure_nobuf
+  pushp "[Chon]: failed to write to stdout\n" pushp putstre call
+  pop
+  pushi 1 swap ret
+
+:read_failure_nobuf
+  pop
+  pushp "[Chon]: failed to read from file desriptor %d\n" pushp putstre call
+  pushi 1 swap ret
+
+:chon_input_nobuf
+  swap
+
+  :read_loop_nobuf
+    dup
+    pushp readcharf call
+    get0 pushi -1 pushp read_failure_nobuf jeq ;check if the read was successful
+    get0 pushi 0 pushp read_loop_end_nobuf jeq
+
+    pushi STDOUT swap pushp writecharf call
+    get0 pushi -1 pushp stdout_write_failure_nobuf jeq
+
+    pushp read_loop_nobuf jmp
+
+    :read_loop_end_nobuf
+      pop pop
+
+  pushi 0
+  swap ret
+
+:chon_input_buf_allocation_failure
+  pushp "[Chon]: allocation failure\n" pushp putstre call
+  pop pop
+  pushi 1 swap ret
+
+set BUF_SIZE 4096
+
+:stdout_write_failure_buf
+  pushp "[Chon]: failed to write to stdout\n" pushp putstre call
+  pushp flush call
+  pop
+  pushi 1 swap ret
+
+:read_failure_buf
+  pushp flush call
+  pushp "[Chon]: failed to read from file desriptor %d\n" pushp putstre call
+  pushi 1 swap ret
+
+:chon_input_buf
+  swap
+
+  pushui BUF_SIZE pushp aseg call
+  get0 pushp chon_input_buf_allocation_failure jnz
+
+  :read_loop_buf
+    over
+    over
+    pushui BUF_SIZE
+    pushp readf call
+    get0 pushi -1 pushp read_failure_buf jeq ;check if the read was successful
+    get0 pushi 0 pushp read_loop_end_buf jeq
+
+    pushi STDOUT over get0 pushp writef call
+    get0 pushi -1 pushp stdout_write_failure_buf jeq
+
+    pushp read_loop_buf jmp
+
+    :read_loop_end_buf
+      pushp flush call
+      pop
+
+  pushi 0
+  swap ret
+
+set MAX_PATHSIZE 4097
+
+:main
+  pushi 2
+  pushp getargc call
+  pushp chon_stdin_and_quit jls
+  pushp chon_args jmp
+
+  :chon_stdin_and_quit
+    pushi STDIN
+    pushp chon_input_buf call
+    hltr
+
+  :chon_args
+    pushui MAX_PATHSIZE
+    pushp aseg call
+    get0 pushp chon_args_allocation_failure jnz
+    pushp read_args jmp
+
+    :chon_args_allocation_failure
+      pushp "[Chon]: allocation failure\n" pushp putstre call
+      pushp mem_close
+      pushi 1
+      hltr
+
+    :read_args
+      pushi 1
+
+      pushp getargc call over pushp read_args_loop_end jeq
+      over over pushui MAX_PATHSIZE pushp getargv call
+      over pushp "-u" pushp strcmp call pushi 0 pushp read_next_arg_nobuf jeq
+      pushp read_args_loop_buf jmp
+
+      :read_args_loop_nobuf
+        pushp getargc call over pushp read_args_loop_end jeq
+        over over pushui MAX_PATHSIZE pushp getargv call
+
+        over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
+        pushp read_arg_nobuf jmp
+
+        :read_stdin_nobuf
+        pushi STDIN dup
+        pushp chon_file_nobuf jmp
+
+        :read_arg_nobuf
+          over
+          pushi O_RDONLY
+          pushp openf call
+          dup pushi -1 pushp open_failure_nobuf jeq
+          dup
+          pushp chon_file_nobuf jmp
+
+          :open_failure_nobuf
+            pop pop
+            dup
+            pushp "[Chon]: failed to open `%t' for reading\n" pushp putfmte call
+            pushp flush call
+            pushp mem_close call
+            pushi 1 hltr
+
+        :chon_file_nobuf
+          pushp chon_input_nobuf call
+          swap dup pushi STDIN pushp close_file_nobuf jne
+          pop
+          pushi 1 pushp chon_quit_err_nobuf jeq
+          pushp read_next_arg_nobuf jmp
+
+          :close_file_nobuf
+            pushp closef call
+            pushi 1 pushp chon_quit_err_nobuf jeq
+            pushp read_next_arg_nobuf jmp
+
+          :chon_quit_err_nobuf
+            pop
+            pushp flush call
+            pushp mem_close call
+            pushi 1 hltr
+
+        :read_next_arg_nobuf
+          pushi 1 addi pushp read_args_loop_nobuf jmp
+
+      :read_args_loop_buf
+        pushp getargc call over pushp read_args_loop_end jeq
+        over over pushui MAX_PATHSIZE pushp getargv call
+
+        over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_buf jeq
+        pushp read_arg_buf jmp
+
+        :read_stdin_buf
+        pushi STDIN dup
+        pushp chon_file_buf jmp
+
+        :read_arg_buf
+          over
+          pushi O_RDONLY
+          pushp openf call
+          dup pushi -1 pushp open_failure_buf jeq
+          dup
+          pushp chon_file_buf jmp
+
+          :open_failure_buf
+            pop pop
+            dup
+            pushp "[Chon]: failed to open `%t' for reading\n" pushp putfmte call
+            pushp flush call
+            pushp mem_close call
+            pushi 1 hltr
+
+        :chon_file_buf
+          pushp chon_input_buf call
+          swap dup pushi STDIN pushp close_file_buf jne
+          pop
+          pushi 1 pushp chon_quit_err_buf jeq
+          pushp read_next_arg_buf jmp
+
+          :close_file_buf
+            pushp closef call
+            pushi 1 pushp chon_quit_err_buf jeq
+            pushp read_next_arg_buf jmp
+
+          :chon_quit_err_buf
+            pop
+            pushp flush call
+            pushp mem_close call
+            pushi 1 hltr
+
+        :read_next_arg_buf
+          pushi 1 addi pushp read_args_loop_buf jmp
+
+      :read_args_loop_end
+        pop
+        pushp flush call
+        pushp mem_close call
+        hlt
