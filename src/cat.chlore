@@ -131,74 +131,6 @@ set MAX_PATHSIZE 4097
       over loadc pushc '-' pushp invalid_option jeq
       pushp read_arg_buf jmp
 
-      :read_next_arg_maybe_optend
-        pushi 1 addi
-        pushp getargc call over pushp read_stdin_nobuf_and_quit jeq
-        over over pushui MAX_PATHSIZE pushp getargv call
-
-        over pushp "--" pushp strcmp call pushi 0 pushp read_next_arg_nobuf jeq
-        over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
-        over pushp "-u" pushp strcmp call pushi 0 pushp duplicate_option jeq
-        over loadc pushc '-' pushp invalid_option jeq
-        pushp check_next_arg jmp
-
-        :read_stdin_nobuf_and_quit
-          pushi STDIN
-          pushp chon_input_nobuf call
-          pushi 1 pushp chon_quit_err jeq
-          pushp read_args_end jmp
-
-        :duplicate_option
-          pushp "chon: (warning) duplicate option `-u'\n" pushp putstre call
-          pushp read_next_arg_maybe_optend jmp
-
-        :check_next_arg
-          pushi 1 addi
-          pushp getargc call over pushp read_stdin_nobuf jeq
-          pushp read_arg_nobuf jmp
-
-      :invalid_option
-        pop
-        dup
-        pushp "chon: invalid option `%t'\n" pushp putfmte call
-        pushp flush call
-        pushp mem_close call
-        pushi 1 hltr
-
-      :read_args_loop_nobuf
-        pushp getargc call over pushp read_args_end jeq
-        over over pushui MAX_PATHSIZE pushp getargv call
-
-        over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
-        pushp read_arg_nobuf jmp
-
-        :read_stdin_nobuf
-        pushi STDIN dup
-        pushp chon_file_nobuf jmp
-
-        :read_arg_nobuf
-          over
-          pushi O_RDONLY
-          pushp openf call
-          dup pushi -1 pushp open_failure jeq
-          dup
-          pushp chon_file_nobuf jmp
-
-        :chon_file_nobuf
-          pushp chon_input_nobuf call
-          swap dup pushi STDIN pushp close_file_nobuf jne
-          pop
-          pushi 1 pushp chon_quit_err jeq
-          pushp read_next_arg_nobuf jmp
-
-          :close_file_nobuf
-            pushp closef call
-            pushi 1 pushp chon_quit_err jeq
-            pushp read_next_arg_nobuf jmp
-
-        :read_next_arg_nobuf
-          pushi 1 addi pushp read_args_loop_nobuf jmp
-
       :read_args_loop_buf
         pushp getargc call over pushp read_args_end jeq
         over over pushui MAX_PATHSIZE pushp getargv call
@@ -232,6 +164,74 @@ set MAX_PATHSIZE 4097
 
         :read_next_arg_buf
           pushi 1 addi pushp read_args_loop_buf jmp
+
+      :read_next_arg_maybe_optend
+        pushi 1 addi
+        pushp getargc call over pushp read_stdin_nobuf_and_quit jeq
+        over over pushui MAX_PATHSIZE pushp getargv call
+
+        over pushp "--" pushp strcmp call pushi 0 pushp read_next_arg_nobuf jeq
+        over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
+        over pushp "-u" pushp strcmp call pushi 0 pushp duplicate_option jeq
+        over loadc pushc '-' pushp invalid_option jeq
+        pushp check_next_arg jmp
+
+        :read_stdin_nobuf_and_quit
+          pushi STDIN
+          pushp chon_input_nobuf call
+          pushi 1 pushp chon_quit_err jeq
+          pushp read_args_end jmp
+
+        :duplicate_option
+          pushp "chon: (warning) duplicate option `-u'\n" pushp putstre call
+          pushp read_next_arg_maybe_optend jmp
+
+        :check_next_arg
+          pushi 1 addi
+          pushp getargc call over pushp read_stdin_nobuf jeq
+          pushp read_arg_nobuf jmp
+
+        :read_args_loop_nobuf
+          pushp getargc call over pushp read_args_end jeq
+          over over pushui MAX_PATHSIZE pushp getargv call
+
+          over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
+          pushp read_arg_nobuf jmp
+
+          :read_stdin_nobuf
+          pushi STDIN dup
+          pushp chon_file_nobuf jmp
+
+          :read_arg_nobuf
+            over
+            pushi O_RDONLY
+            pushp openf call
+            dup pushi -1 pushp open_failure jeq
+            dup
+            pushp chon_file_nobuf jmp
+
+          :chon_file_nobuf
+            pushp chon_input_nobuf call
+            swap dup pushi STDIN pushp close_file_nobuf jne
+            pop
+            pushi 1 pushp chon_quit_err jeq
+            pushp read_next_arg_nobuf jmp
+
+            :close_file_nobuf
+              pushp closef call
+              pushi 1 pushp chon_quit_err jeq
+              pushp read_next_arg_nobuf jmp
+
+          :read_next_arg_nobuf
+            pushi 1 addi pushp read_args_loop_nobuf jmp
+
+      :invalid_option
+        pop
+        dup
+        pushp "chon: invalid option `%t'\n" pushp putfmte call
+        pushp flush call
+        pushp mem_close call
+        pushi 1 hltr
 
       :open_failure
         pop pop
