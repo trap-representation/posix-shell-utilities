@@ -160,8 +160,8 @@ import "string.chlore"
             pushi 1 pushp chon_quit_err jeq
             pushp read_next_arg_buf jmp
 
-        :read_next_arg_buf
-          pushi 1 addi pushp read_args_loop_buf jmp
+          :read_next_arg_buf
+            pushi 1 addi pushp read_args_loop_buf jmp
 
       :read_next_arg_maybe_optend
         pushi 1 addi
@@ -220,8 +220,8 @@ import "string.chlore"
               pushi 1 pushp chon_quit_err jeq
               pushp read_next_arg_nobuf jmp
 
-          :read_next_arg_nobuf
-            pushi 1 addi pushp read_args_loop_nobuf jmp
+            :read_next_arg_nobuf
+              pushi 1 addi pushp read_args_loop_nobuf jmp
 
       :invalid_option
         pop
