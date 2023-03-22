@@ -37,7 +37,7 @@ import "string.chlore"
 
     :read_failure_nobuf
       pop
-      pushp "chon: failed to read from file desriptor %d\n" pushp putstre call
+      pushp "chon: failed to read from file desriptor %i\n" pushp putstre call
       pushi 1 swap ret
 
     :stdout_write_failure_nobuf
@@ -79,7 +79,7 @@ import "string.chlore"
 
     :read_failure_buf
       pushp flush call
-      pushp "chon: failed to read from file desriptor %d\n" pushp putstre call
+      pushp "chon: failed to read from file desriptor %i\n" pushp putstre call
       pushi 1 swap ret
 
     :stdout_write_failure_buf
