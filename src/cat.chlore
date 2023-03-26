@@ -14,12 +14,11 @@
 ;    You should have received a copy of the GNU General Public License
 ;    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import "stdlib.chlore"
-import "io.chlore"
-import "alloc2.chlore"
-;import "/usr/local/include/memchk.chlore" ;uncomment this line and comment out the previous line to use the allocator provided by the `memchk' library (instead of the one that's provided by the standard library) for detecting memory leaks
-import "stddef.chlore"
-import "string.chlore"
+import "stdlib.chloreh"
+import "io.chloreh"
+import "alloc2.chloreh"
+import "stddef.chloreh"
+import "string.chloreh"
 
 :chon_input_nobuf
   swap
