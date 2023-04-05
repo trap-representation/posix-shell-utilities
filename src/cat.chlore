@@ -36,7 +36,7 @@ import "string.chloreh"
 
     :read_failure_nobuf
       pop
-      pushp "chon: failed to read from file desriptor %i\n" pushp putstre call
+      pushp "chon: failed to read from file desriptor %i\n" pushp putfmte call
       pushi 1 swap ret
 
     :stdout_write_failure_nobuf
@@ -52,7 +52,7 @@ import "string.chloreh"
 :chon_input_buf
   swap
 
-  set BUF_SIZE 4096
+  set BUF_SIZE 1048576
   pushui BUF_SIZE pushp aseg call
   get0 pushp chon_input_buf_allocation_failure jnz
   pushp read_loop_buf jmp
@@ -78,7 +78,7 @@ import "string.chloreh"
 
     :read_failure_buf
       pushp flush call
-      pushp "chon: failed to read from file desriptor %i\n" pushp putstre call
+      pushp "chon: failed to read from file desriptor %i\n" pushp putfmte call
       pushi 1 swap ret
 
     :stdout_write_failure_buf
