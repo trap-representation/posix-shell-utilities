@@ -19,6 +19,7 @@ import "io.chloreh"
 import "alloc2.chloreh"
 import "stddef.chloreh"
 import "string.chloreh"
+import "errors.chloreh"
 
 :chon_input_nobuf
   swap
@@ -36,11 +37,11 @@ import "string.chloreh"
 
     :read_failure_nobuf
       pop
-      pushp "chon: failed to read from file desriptor %i\n" pushp putfmte call
+      pushp "chon: " pushp perr call
       pushi 1 swap ret
 
     :stdout_write_failure_nobuf
-      pushp "chon: failed to write to stdout\n" pushp putstre call
+      pushp "chon: " pushp perr call
       pop
       pushi 1 swap ret
 
@@ -59,7 +60,7 @@ import "string.chloreh"
 
 
   :chon_input_buf_allocation_failure
-    pushp "chon: allocation failure\n" pushp putstre call
+    pushp "chon: " pushp perr call
     pop pop
     pushi 1 swap ret
 
@@ -82,7 +83,7 @@ import "string.chloreh"
       pushi 1 swap ret
 
     :stdout_write_failure_buf
-      pushp "chon: failed to write to stdout\n" pushp putstre call
+      pushp "chon: " pushp perr call
       pushp flush call
       pop
       pushi 1 swap ret
@@ -112,7 +113,7 @@ import "string.chloreh"
     pushp read_args jmp
 
     :chon_args_allocation_failure
-      pushp "chon: allocation failure\n" pushp putstre call
+      pushp "chon: " pushp perr call
       pushp mem_close
       pushi 1
       hltr
