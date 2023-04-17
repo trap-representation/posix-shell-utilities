@@ -69,7 +69,7 @@ import "locale.chloreh"
     over
     over
     pushui BUF_SIZE
-    pushp readf call
+    pushp readstrf call
     get0 pushi -1 pushp read_failure_buf jeq ;check if the read was successful
     get0 pushi 0 pushp read_loop_end_buf jeq
 
