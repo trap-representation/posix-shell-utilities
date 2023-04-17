@@ -21,6 +21,7 @@ import "stddef.chloreh"
 import "string.chloreh"
 import "errors.chloreh"
 import "locale.chloreh"
+import "wchar.chloreh"
 
 :chon_input_nobuf
   swap
@@ -55,7 +56,7 @@ import "locale.chloreh"
   swap
 
   set BUF_SIZE 1048576
-  pushui BUF_SIZE pushp aseg call
+  pushl BUF_SIZE pushl WCHAR_SIZE mull pushp aseg call
   get0 pushp chon_input_buf_allocation_failure jnz
   pushp read_loop_buf jmp
 
@@ -68,7 +69,7 @@ import "locale.chloreh"
   :read_loop_buf
     over
     over
-    pushui BUF_SIZE
+    pushl BUF_SIZE
     pushp readstrf call
     get0 pushi -1 pushp read_failure_buf jeq ;check if the read was successful
     get0 pushi 0 pushp read_loop_end_buf jeq
@@ -120,8 +121,8 @@ import "locale.chloreh"
       hltr
 
     :chon_args
-      set MAX_PATHSIZE 4097
-      pushui MAX_PATHSIZE
+      set MAX_PATHSIZE 4096
+      pushl MAX_PATHSIZE pushi 1 addl pushl WCHAR_SIZE mull
       pushp aseg call
       get0 pushp chon_args_allocation_failure jnz
       pushp read_args jmp
@@ -136,7 +137,7 @@ import "locale.chloreh"
         pushi 1
 
         pushp getargc call over pushp read_args_end jeq
-        over over pushui MAX_PATHSIZE pushp getargv call
+        over over pushl MAX_PATHSIZE pushp getargv call
         over pushp "-u" pushp strcmp call pushi 0 pushp read_next_arg_maybe_optend jeq
         over pushp "--" pushp strcmp call pushi 0 pushp read_next_arg_buf jeq
         over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_buf jeq
@@ -145,7 +146,7 @@ import "locale.chloreh"
 
         :read_args_loop_buf
           pushp getargc call over pushp read_args_end jeq
-          over over pushui MAX_PATHSIZE pushp getargv call
+          over over pushl MAX_PATHSIZE pushp getargv call
 
           over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_buf jeq
           pushp read_arg_buf jmp
@@ -180,7 +181,7 @@ import "locale.chloreh"
         :read_next_arg_maybe_optend
           pushi 1 addi
           pushp getargc call over pushp read_stdin_nobuf_and_quit jeq
-          over over pushui MAX_PATHSIZE pushp getargv call
+          over over pushl MAX_PATHSIZE pushp getargv call
 
           over pushp "--" pushp strcmp call pushi 0 pushp read_next_arg_nobuf jeq
           over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
@@ -205,7 +206,7 @@ import "locale.chloreh"
 
           :read_args_loop_nobuf
             pushp getargc call over pushp read_args_end jeq
-            over over pushui MAX_PATHSIZE pushp getargv call
+            over over pushl MAX_PATHSIZE pushp getargv call
 
             over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
             pushp read_arg_nobuf jmp
