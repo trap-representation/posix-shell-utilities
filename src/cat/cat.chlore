@@ -157,7 +157,7 @@ import "wchar.chloreh"
 
           :read_arg_buf
             over
-            pushi O_RDONLY
+            pushi O_RDONLYT
             pushp openf call
             dup pushi -1 pushp open_failure jeq
             dup
@@ -217,7 +217,7 @@ import "wchar.chloreh"
 
             :read_arg_nobuf
               over
-              pushi O_RDONLY
+              pushi O_RDONLYT
               pushp openf call
               dup pushi -1 pushp open_failure jeq
               dup
