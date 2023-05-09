@@ -1,0 +1,266 @@
+;    Chon is a POSIX compliant (POSIX.1-2017) implementation of the cat utility
+;    Copyright (C) 2023  Somdipto Chakraborty
+;
+;    This program is free software: you can redistribute it and/or modify
+;    it under the terms of the GNU General Public License as published by
+;    the Free Software Foundation, either version 3 of the License, or
+;    (at your option) any later version.
+;
+;    This program is distributed in the hope that it will be useful,
+;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;    GNU General Public License for more details.
+;
+;    You should have received a copy of the GNU General Public License
+;    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import "stdlib.chloreh"
+import "io.chloreh"
+import "alloc2.chloreh"
+import "stddef.chloreh"
+import "string.chloreh"
+import "errors.chloreh"
+import "locale.chloreh"
+import "wchar.chloreh"
+
+:chon_input_nobuf
+  swap
+
+  :read_loop_nobuf
+    dup
+    pushp readcharf call
+    get0 pushi -1 pushp read_failure_nobuf jeq ;check if the read was successful
+    get0 pushi 0 pushp read_loop_end_nobuf jeq
+
+    pushi STDOUT swap pushp writecharf call
+    get0 pushi -1 pushp stdout_write_failure_nobuf jeq
+
+    pushp read_loop_nobuf jmp
+
+    :read_failure_nobuf
+      pushp "chon: " pushp perr call
+      pop
+      pushi 1 swap ret
+
+    :stdout_write_failure_nobuf
+      pushp "chon: " pushp perr call
+      pop
+      pushi 1 swap ret
+
+    :read_loop_end_nobuf
+      pop pop
+      pushi 0
+      swap ret
+
+:chon_input_buf
+  swap
+
+  set CHAR_N 1048576
+  pushl CHAR_N pushl WCHAR_SIZE mull pushp aseg call
+  get0 pushp chon_input_buf_allocation_failure jnz
+  pushp read_loop_buf jmp
+
+
+  :chon_input_buf_allocation_failure
+    pushp "chon: " pushp perr call
+    pop pop
+    pushi 1 swap ret
+
+  :read_loop_buf
+    over
+    over
+    pushl CHAR_N
+    pushp readstrf call
+    get0 pushi -1 pushp read_failure_buf jeq ;check if the read was successful
+    get0 pushi 0 pushp read_loop_end_buf jeq
+
+    pushi STDOUT over get0 pushp writestrf call
+    get0 pushi -1 pushp stdout_write_failure_buf jeq
+
+    pushp read_loop_buf jmp
+
+    :read_failure_buf
+      pushp "chon: " pushp perr call
+      pushp flush call
+      pop
+      pushi 1 swap ret
+
+    :stdout_write_failure_buf
+      pushp "chon: " pushp perr call
+      pushp flush call
+      pop
+      pushi 1 swap ret
+
+    :read_loop_end_buf
+      pushp flush call
+      pop
+      pushi 0
+      swap ret
+
+:main
+  pushi LC_ALL
+  pushp ""
+  pushp setlocale call
+  get0 pushp setlocale_failure jnz
+  pushp chon jmp
+
+  :setlocale_failure
+    pushp "chon: " pushp perr call
+    pushi 1
+    hltr
+
+  :chon
+    pushi 2
+    pushp getargc call
+    pushp chon_stdin_and_quit jls
+    pushp chon_args jmp
+
+    :chon_stdin_and_quit
+      pushi STDIN
+      pushp chon_input_buf call
+      pushp mem_close call
+      hltr
+
+    :chon_args
+      set MAX_PATHSIZE 4096
+      pushl MAX_PATHSIZE pushi 1 addl pushl WCHAR_SIZE mull
+      pushp aseg call
+      get0 pushp chon_args_allocation_failure jnz
+      pushp read_args jmp
+
+      :chon_args_allocation_failure
+        pushp "chon: " pushp perr call
+        pushp mem_close call
+        pushi 1
+        hltr
+
+      :read_args
+        pushi 1
+
+        pushp getargc call over pushp read_args_end jeq
+        over over pushl MAX_PATHSIZE pushp getargv call
+        over pushp "-u" pushp strcmp call pushi 0 pushp read_next_arg_maybe_optend jeq
+        over pushp "--" pushp strcmp call pushi 0 pushp read_next_arg_buf jeq
+        over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_buf jeq
+        over loadc pushc '-' pushp invalid_option jeq
+        pushp read_arg_buf jmp
+
+        :read_args_loop_buf
+          pushp getargc call over pushp read_args_end jeq
+          over over pushl MAX_PATHSIZE pushp getargv call
+
+          over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_buf jeq
+          pushp read_arg_buf jmp
+
+          :read_stdin_buf
+          pushi STDIN dup
+          pushp chon_file_buf jmp
+
+          :read_arg_buf
+            over
+            pushi O_RDONLYT
+            pushp openf call
+            dup pushi -1 pushp open_failure jeq
+            dup
+            pushp chon_file_buf jmp
+
+          :chon_file_buf
+            pushp chon_input_buf call
+            swap dup pushi STDIN pushp close_file_buf jne
+            pop
+            pushi 1 pushp chon_quit_err jeq
+            pushp read_next_arg_buf jmp
+
+            :close_file_buf
+              pushp closef call
+              pushi 1 pushp chon_quit_err jeq
+              pushp read_next_arg_buf jmp
+
+            :read_next_arg_buf
+              pushi 1 addi pushp read_args_loop_buf jmp
+
+        :read_next_arg_maybe_optend
+          pushi 1 addi
+          pushp getargc call over pushp read_stdin_nobuf_and_quit jeq
+          over over pushl MAX_PATHSIZE pushp getargv call
+
+          over pushp "--" pushp strcmp call pushi 0 pushp read_next_arg_nobuf jeq
+          over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
+          over pushp "-u" pushp strcmp call pushi 0 pushp duplicate_option jeq
+          over loadc pushc '-' pushp invalid_option jeq
+          pushp check_arg jmp
+
+          :read_stdin_nobuf_and_quit
+            pushi STDIN
+            pushp chon_input_nobuf call
+            pushi 1 pushp chon_quit_err jeq
+            pushp read_args_end jmp
+
+          :duplicate_option
+            pushp "chon: (warning) duplicate option `-u'\n" pushp putstre call
+            pushp read_next_arg_maybe_optend jmp
+
+          :check_arg
+            pushp getargc call over pushp read_stdin_nobuf jeq
+            pushp read_arg_nobuf jmp
+
+          :read_args_loop_nobuf
+            pushp getargc call over pushp read_args_end jeq
+            over over pushl MAX_PATHSIZE pushp getargv call
+
+            over pushp "-" pushp strcmp call pushi 0 pushp read_stdin_nobuf jeq
+            pushp read_arg_nobuf jmp
+
+            :read_stdin_nobuf
+              pushi STDIN dup
+              pushp chon_file_nobuf jmp
+
+            :read_arg_nobuf
+              over
+              pushi O_RDONLYT
+              pushp openf call
+              dup pushi -1 pushp open_failure jeq
+              dup
+              pushp chon_file_nobuf jmp
+
+            :chon_file_nobuf
+              pushp chon_input_nobuf call
+              swap dup pushi STDIN pushp close_file_nobuf jne
+              pop
+              pushi 1 pushp chon_quit_err jeq
+              pushp read_next_arg_nobuf jmp
+
+              :close_file_nobuf
+                pushp closef call
+                pushi 1 pushp chon_quit_err jeq
+                pushp read_next_arg_nobuf jmp
+
+              :read_next_arg_nobuf
+                pushi 1 addi pushp read_args_loop_nobuf jmp
+
+        :invalid_option
+          pop
+          dup
+          pushp "chon: invalid option `%t'\n" pushp putfmte call
+          pushp flush call
+          pushp mem_close call
+          pushi 1 hltr
+
+        :open_failure
+          pushp "chon: " pushp perr call
+          pop pop
+          pushp flush call
+          pushp mem_close call
+          pushi 1 hltr
+
+        :chon_quit_err
+          pop
+          pushp flush call
+          pushp mem_close call
+          pushi 1 hltr
+
+        :read_args_end
+          pop
+          pushp flush call
+          pushp mem_close call
+          hlt
