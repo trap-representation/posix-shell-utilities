@@ -4,3 +4,5 @@ POSIX.1-2017 shell utilities implemented in the [Chlore Programming Language](ht
 1. cat
 2. true
 3. false
+
+NOTE: The utilities does not work with the current revision of the language.
